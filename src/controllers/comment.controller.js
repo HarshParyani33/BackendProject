@@ -33,7 +33,7 @@ const addComment = asyncHandler(async (req, res) => {
     // TODO: add a comment to a video
     const { videoId } = req.params;
     const { userId } = req.user;
-    const { text } = req.body;
+    const { content } = req.body;
 
     // Validate videoId
     if (!mongoose.isValidObjectId(videoId)) {
@@ -41,7 +41,7 @@ const addComment = asyncHandler(async (req, res) => {
     }
 
     // Validate text
-    if (!text || text.trim() === "") {
+    if (!content || content.trim() === "") {
         throw new ApiError(400, "Comment text is required");
     }
 
@@ -49,7 +49,7 @@ const addComment = asyncHandler(async (req, res) => {
     const comment = await Comment.create({
         video: videoId,
         owner: userId,
-        text,
+        content,
     });
 
     // Respond with the created comment
@@ -58,10 +58,67 @@ const addComment = asyncHandler(async (req, res) => {
  
 const updateComment = asyncHandler(async (req, res) => {
     // TODO: update a comment
+    const { commentId } = req.params;
+    const { userId } = req.user;
+    const { content } = req.body;
+
+    // Validate commentId
+    if (!mongoose.isValidObjectId(commentId)) {
+        throw new ApiError(400, "Invalid Comment Id");
+    }
+
+    // Validate text
+    if (!content || content.trim() === "") {
+        throw new ApiError(400, "Comment text is required");
+    }
+
+    // Find the comment
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+        throw new ApiError(404, "Comment not found");
+    }
+
+    // Check if the user is the owner of the comment
+    if (comment.owner.toString() !== userId) {
+        throw new ApiError(403, "You are not authorized to update this comment");
+    }
+
+    // Update the comment
+    comment.content = content;
+    await comment.save();
+
+    // Respond with the updated comment
+    res.status(200).json(new ApiResponse(200, comment, "Comment updated successfully"));
 })
  
 const deleteComment = asyncHandler(async (req, res) => {
     // TODO: delete a comment
+    const { commentId } = req.params;
+    const { userId } = req.user;
+
+    // Validate commentId
+    if (!mongoose.isValidObjectId(commentId)) {
+        throw new ApiError(400, "Invalid Comment Id");
+    }
+
+    // Find the comment
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+        throw new ApiError(404, "Comment not found");
+    }
+
+    // Check if the user is the owner of the comment
+    if (comment.owner.toString() !== userId) {
+        throw new ApiError(403, "You are not authorized to delete this comment");
+    }
+
+    // Delete the comment
+    await comment.deleteOne();
+
+    // Respond with success
+    res.status(200).json(new ApiResponse(200, null, "Comment deleted successfully"));
 })
  
 export {
