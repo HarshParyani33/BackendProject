@@ -66,11 +66,62 @@ const publishAVideo = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: get video by id
+    if (!isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid Video Id");
+    }
+
+    // Find the video
+    const video = await Video.findById(videoId).populate("owner", "name email");
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    // Respond with the video
+    res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video fetched successfully"));
 })
  
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: update video details like title, description, thumbnail
+    const { title, description } = req.body;
+    const { file } = req; // Multer will handle the thumbnail upload
+
+    // Validate videoId
+    if (!isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid Video Id");
+    }
+
+    // Find the video
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    // Update video details
+    if (title) video.title = title;
+    if (description) video.description = description;
+
+    // If a new thumbnail is uploaded, update it
+    if (file) {
+        const uploadResult = await uploadOnCloudinary(file.path);
+
+        if (!uploadResult) {
+            throw new ApiError(500, "Failed to upload thumbnail to Cloudinary");
+        }
+
+        video.thumbnail = uploadResult.secure_url;
+    }
+
+    await video.save();
+
+    // Respond with the updated video
+    res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video updated successfully"));
  
 })
  
